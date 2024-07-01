@@ -1,8 +1,27 @@
 name: Build for amd64 Architecture
 on:
   workflow_dispatch:
-
-  push:
+    inputs:
+      target_repo:
+        description: Target repo to build in <owner>/<reponame> format
+        type: string
+        required: true
+      target_ref:
+        description: Target ref in repo to build (such as main)
+        type: string
+        required: true
+      prebuild_command:
+        description: Shell commands to run before build starts
+        type: string
+        required: false
+      build_command:
+        description: Shell commands to start build
+        type: string
+        required: true
+      target_files:
+        description: File/folder paths to create tarball after the build (separated with ';' if there is more than one)
+        type: string
+        required: false
 
 jobs:
   build:
@@ -11,27 +30,29 @@ jobs:
       - name: Checkout to target repo
         uses: actions/checkout@v2
         with:
-          repository: talhaHavadar/governor.badgerd.nl
-          ref: rust
+          repository: ${{ inputs.target_repo }}
+          ref: ${{ inputs.target_repo }}
           token: ${{ secrets.PAT_TOKEN }}
+
       - name: Install dependencies
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          cargo install cargo-deb
-          sudo apt install tree -y
+          eval(${{ inputs.prebuild_command }})
+
       - name: Build the application
         run: |
-          cargo deb
-      - name: List the output
+          eval(${{ inputs.build_command }})
+
+      - name: Prepare outputs
         run: |
-          tree ./target/debian
-          tar -czvf build-artifacts.tar.gz ./target
+          tar -czvf build-artifacts.tar.gz $(sed 's/;/ /g' <<< $a)
+
       - name: Upload the artifacts
         id: upload-artifacts
         uses: actions/upload-artifact@v4
         with:
           path: build-artifacts.tar.gz
           retention-days: 1
+
       - name: Put run id to pr
         run: |
           echo 'run id ${{ github.run_id }}'
