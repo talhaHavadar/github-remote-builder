@@ -36,11 +36,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          eval(${{ inputs.prebuild_command }})
+          ${{ inputs.prebuild_command }}
 
       - name: Build the application
         run: |
-          eval(${{ inputs.build_command }})
+          ${{ inputs.build_command }}
 
       - name: Prepare outputs
         run: |
