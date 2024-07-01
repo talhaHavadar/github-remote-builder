@@ -32,6 +32,6 @@ jobs:
         with:
           path: build-artifacts.tar.gz
           retention-days: 1
-      - name: Put artifact id to pr
+      - name: Put run id to pr
         run: |
-          echo 'artifact id ${{steps.upload-artifacts.outputs.artifact-id}}'
+          echo 'run id ${{ github.run_id }}'
