@@ -44,7 +44,7 @@ jobs:
 
       - name: Prepare outputs
         run: |
-          tar -czvf build-artifacts.tar.gz $(sed 's/;/ /g' <<< $a)
+          tar -czvf build-artifacts.tar.gz $(sed 's/;/ /g' <<< ${{ inputs.target_files }})
 
       - name: Upload the artifacts
         id: upload-artifacts
