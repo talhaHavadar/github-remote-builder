@@ -25,6 +25,7 @@ jobs:
       - name: List the output
         run: |
           tree ./target/debian
+          tar -czvf build-artifacts.tar.gz ./target
       - name: Setup upterm session
         uses: lhotari/action-upterm@v1
         with:
