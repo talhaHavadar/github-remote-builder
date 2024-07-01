@@ -1,0 +1,31 @@
+name: Build for amd64 Architecture
+on:
+  workflow_dispatch:
+
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout to target repo
+        uses: actions/checkout@v2
+        with:
+          repository: talhaHavadar/governor.badgerd.nl
+          ref: rust
+          token: ${{ secrets.PAT_TOKEN }}
+      - name: Install dependencies
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          cargo install cargo-deb
+          sudo apt install tree -y
+      - name: Build the application
+        run: |
+          cargo deb
+      - name: List the output
+        run: |
+          tree ./target/debian
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
+        with:
+          limit-access-to-actor: true
