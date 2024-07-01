@@ -26,7 +26,12 @@ jobs:
         run: |
           tree ./target/debian
           tar -czvf build-artifacts.tar.gz ./target
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
+      - name: Upload the artifacts
+        id: upload-artifacts
+        uses: actions/upload-artifact@v4
         with:
-          limit-access-to-actor: true
+          path: build-artifacts.tar.gz
+          retention-days: 1
+      - name: Put artifact id to pr
+        run: |
+          echo 'artifact id ${{steps.upload-artifacts.outputs.artifact-id}}'
