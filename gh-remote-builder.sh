@@ -39,17 +39,21 @@ done
 ARCH=${ARCH:-amd64}
 TARGET_REPO=${TARGET_REPO:-$current_repo}
 TARGET_REF=${TARGET_REF:-$current_branch}
+PREBUILD_COMMAND=${PREBUILD_COMMAND:-$(cat .gh-remote-builder/prebuild)}
+BUILD_COMMAND=${BUILD_COMMAND:-$(cat .gh-remote-builder/build)}
+TARGET_FILES=$(sed 's/;/ /g' <<< ${TARGET_FILES:-$(cat .gh-remote-builder/target-files)})
 
 gh workflow run -R talhaHavadar/github-remote-builder \
     $ARCH-build.yaml \
     -f target_repo=$TARGET_REPO \
     -f target_ref=$TARGET_REF \
-    -f prebuild_command="curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && cargo install cargo-deb" \
-    -f build_command='cargo deb' -f target_files="target/debian"
+    -f prebuild_command="$PREBUILD_COMMAND" \
+    -f build_command="$BUILD_COMMAND" \
+    -f target_files="$TARGET_FILES"
 
 sleep 4s
 
-run_id=$(gh run -R talhaHavadar/github-remote-builder list --workflow amd64-build.yaml | head -1 | awk -v FS='\t' '{ print $7}')
+run_id=$(gh run -R talhaHavadar/github-remote-builder list --workflow "$ARCH"-build.yaml | head -1 | awk -v FS='\t' '{ print $7}')
 
 gh run -R talhaHavadar/github-remote-builder watch $run_id && \
     gh run -R talhaHavadar/github-remote-builder download $run_id && \
