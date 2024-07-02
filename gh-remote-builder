@@ -6,13 +6,69 @@ if ! command -v gh &> /dev/null; then
     echo "This tool requires Github CLI tool to be installed please first install Github CLI and then try to run gh-remote-builder"
 fi
 
+function usage()
+{
+    cat << EOF
+gh-remote-builder [options] [commands]
+
+Example usage:
+    gh-remote-builder --arch=amd64 --target-files="target/debian;target/release" --out=download
+        starts a remote build for amd64 architecture, using current repo and 
+        branch information, it will use the scripts defined in '.gh-remote-builder' directory
+            - prebuild
+            - build
+            - target-files (overridden by --target-files)
+        after build is finished it packs the files listed 
+        in --target-files and downloads the artifacts into 'download' folder as
+        specified in --out
+
+    gh-remote-builder --target-repo="Badger-Embedded/badgerd-sdwirec" --target-ref=main
+        starts a remote build for amd64(by default) architecture, using
+        'Badger-Embedded/badgerd-sdwirec' repo and 'main' branch, it will use
+        use scripts defined in '.gh-remote-builder' directory
+            - prebuild
+            - build
+            - target-files
+        after build finished it packs the files listed in .gh-remote-builder/target-files
+        and downloads the artifacts into 'target'(by default) folder
+
+options:
+    --help                          Prints out this message
+
+    --arch=<value>                  default: amd64
+
+    --target-repo=<value>           default: uses current github repo in the directory that the tool has been run
+
+    --target-ref=<value>            default: uses the active branch of the repo that the tool has been run
+
+    --prebuild-command=<value>      default: uses .gh-remote-builder/prebuild file as source
+                                    Commands that will run before build starts,
+                                    it is a nice place to install dependencies
+
+    --build-command=<value>         default: uses .gh-remote-builder/build file as source
+                                    Actual build command that will be executed
+                                    in build phase. A good example could be "cargo deb"
+
+    --target-files=<value>          default: uses .gh-remote-builder/target-files as source
+                                    File/Directory paths to be tarballed. Multiple
+                                    path can be provided by using ';' as delimiter
+    --out=<value>
+
+commands:
+    init                            Initialises the gh-remote-builder
+                                    it creates initial config file if it is not created yet
+                                    creates the directory structure for .gh-remote-builder directory
+                                    adds .gh-remote-builder into .gitignore if there is a .gitignore in cwd
+EOF
+}
+
 current_repo=$(git remote -v | grep github | head -1 | sed 's/.*://' | sed 's/\.git.*//')
 current_branch=$(git branch | grep '*' | sed 's/.*\s//')
 
 for i in "$@"; do
     case "$i" in
         --help)
-            # usage
+            usage
             exit
             ;;
         --arch=*)
@@ -45,7 +101,7 @@ for i in "$@"; do
             ;;
         -*|--*)
             echo "ERROR: unknown option $1"
-            # usage
+            usage
             exit 1
             ;;
         *)
