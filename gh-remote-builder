@@ -1,40 +1,106 @@
 #!/bin/bash
 
+CONFIG_PATH="${XDG_CONFIG_HOME:-"~/.config"}/gh-remote-builder"
+
+if ! command -v gh &> /dev/null; then
+    echo "This tool requires Github CLI tool to be installed please first install Github CLI and then try to run gh-remote-builder"
+fi
+
 current_repo=$(git remote -v | grep github | head -1 | sed 's/.*://' | sed 's/\.git.*//')
 current_branch=$(git branch | grep '*' | sed 's/.*\s//')
 
-while [ -n "${1-}" ]; do
-    case "$1" in
+for i in "$@"; do
+    case "$i" in
         --help)
             # usage
             exit
             ;;
         --arch=*)
             ARCH="${1#*=}"
+            shift
             ;;
         --target-repo=*)
             TARGET_REPO="${1#*=}"
+            shift
             ;;
         --target-ref=*)
             TARGET_REF="${1#*=}"
+            shift
             ;;
         --prebuild-command=*)
             PREBUILD_COMMAND="${1#*=}"
+            shift
             ;;
         --build-command=*)
             BUILD_COMMAND="${1#*=}"
+            shift
             ;;
         --target-files=*)
             TARGET_FILES="${1#*=}"
+            shift
             ;;
-        *)
+        --out=*)
+            DOWNLOAD_DIR="${1#*=}"
+            shift
+            ;;
+        -*|--*)
             echo "ERROR: unknown option $1"
             # usage
             exit 1
             ;;
+        *)
+            ;;
     esac
-    shift
 done
+
+if [[ -n $1 ]]; then
+    COMMAND="$1"
+fi
+
+if [[ "$COMMAND" == "init" ]]; then
+    gh auth status &> /dev/null
+
+    if [ ! $? -eq 0 ]; then
+        gh auth login
+    fi
+
+    if [[ ! -f "$CONFIG_PATH"/config ]]; then
+        read -p "Enter repo name of builder: [default: talhaHavadar/github-remote-builder] " REPO
+        REPO=${REPO:-talhaHavadar/github-remote-builder}
+        mkdir -p "$CONFIG_PATH"
+        echo "REPO=\"$REPO\"" > "$CONFIG_PATH"/config
+    fi
+
+    # check if the .gh-remote-builder exists if not create it
+    if [[ ! -d ".gh-remote-builder" ]]; then
+        echo "Creating .gh-remote-builder in $(pwd)"
+        if [[ -f ".gitignore" ]]; then
+            echo ".gh-remote-builder/" >> .gitignore
+        fi
+        mkdir .gh-remote-builder
+        touch .gh-remote-builder/prebuild
+        touch .gh-remote-builder/build
+        touch .gh-remote-builder/target-files
+    fi
+    cat << EOF
+
+Update the content of the files below as required to build and
+collect the results of the build:
+    .gh-remote-builder/prebuild     --> will be executed before build, 
+                                        it is a good place to install dependencies
+    .gh-remote-builder/build        --> will be executed during build phase, it is 
+                                        a good place to put build commands 
+                                        (such as 'cargo build')
+    .gh-remote-builder/target-files --> paths of the files (relative to root 
+                                        of target repo) that needs to be downloaded 
+                                        (seperated by ';') (Example: 'target/debian;target/release')
+
+EOF
+    echo "Initialisation is completed.. Please see 'gh-remote-builder --help' for usage details"
+    exit 0
+fi
+
+source "$CONFIG_PATH"/config
 
 ARCH=${ARCH:-amd64}
 TARGET_REPO=${TARGET_REPO:-$current_repo}
@@ -42,8 +108,9 @@ TARGET_REF=${TARGET_REF:-$current_branch}
 PREBUILD_COMMAND=${PREBUILD_COMMAND:-$(cat .gh-remote-builder/prebuild)}
 BUILD_COMMAND=${BUILD_COMMAND:-$(cat .gh-remote-builder/build)}
 TARGET_FILES=$(sed 's/;/ /g' <<< ${TARGET_FILES:-$(cat .gh-remote-builder/target-files)})
+DOWNLOAD_DIR=${DOWNLOAD_DIR:-"target" }
 
-gh workflow run -R talhaHavadar/github-remote-builder \
+gh workflow run -R $REPO \
     $ARCH-build.yaml \
     -f target_repo=$TARGET_REPO \
     -f target_ref=$TARGET_REF \
@@ -56,5 +123,5 @@ sleep 4s
 run_id=$(gh run -R talhaHavadar/github-remote-builder list --workflow "$ARCH"-build.yaml | head -1 | awk -v FS='\t' '{ print $7}')
 
 gh run -R talhaHavadar/github-remote-builder watch $run_id && \
-    gh run -R talhaHavadar/github-remote-builder download $run_id && \
+    gh run -R talhaHavadar/github-remote-builder download $run_id -D "$DOWNLOAD_DIR" && \
     gh run -R talhaHavadar/github-remote-builder delete $run_id
