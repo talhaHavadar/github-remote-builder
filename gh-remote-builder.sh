@@ -27,6 +27,9 @@ while [ -n "${1-}" ]; do
         --target-files=*)
             TARGET_FILES="${1#*=}"
             ;;
+        --out=*)
+            DOWNLOAD_DIR="${1#*=}"
+            ;;
         *)
             echo "ERROR: unknown option $1"
             # usage
@@ -42,7 +45,7 @@ TARGET_REF=${TARGET_REF:-$current_branch}
 PREBUILD_COMMAND=${PREBUILD_COMMAND:-$(cat .gh-remote-builder/prebuild)}
 BUILD_COMMAND=${BUILD_COMMAND:-$(cat .gh-remote-builder/build)}
 TARGET_FILES=$(sed 's/;/ /g' <<< ${TARGET_FILES:-$(cat .gh-remote-builder/target-files)})
-DOWNLOAD_DIR="target"
+DOWNLOAD_DIR=${DOWNLOAD_DIR:-"target" }
 
 gh workflow run -R talhaHavadar/github-remote-builder \
     $ARCH-build.yaml \
