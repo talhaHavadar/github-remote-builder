@@ -64,7 +64,7 @@ if [[ "$COMMAND" == "init" ]]; then
         gh auth login
     fi
 
-    if [[ ! -f "$CONFIG_PATH"/config ]]; then
+    if [ ! -f "$CONFIG_PATH"/config ]; then
         read -p "Enter repo name of builder: [default: talhaHavadar/github-remote-builder] " REPO
         REPO=${REPO:-talhaHavadar/github-remote-builder}
         mkdir -p "$CONFIG_PATH"
