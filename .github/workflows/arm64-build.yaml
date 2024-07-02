@@ -1,0 +1,58 @@
+name: Build for arm64 Architecture
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: Target repo to build in <owner>/<reponame> format
+        type: string
+        required: true
+      target_ref:
+        description: Target ref in repo to build (such as main)
+        type: string
+        required: true
+      prebuild_command:
+        description: Shell commands to run before build starts
+        type: string
+        required: false
+      build_command:
+        description: Shell commands to start build
+        type: string
+        required: true
+      target_files:
+        description: File/folder paths to create tarball after the build (separated with ';' if there is more than one)
+        type: string
+        required: false
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, arm64]
+    steps:
+      - name: Checkout to target repo
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ inputs.target_repo }}
+          ref: ${{ inputs.target_ref }}
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          ${{ inputs.prebuild_command }}
+
+      - name: Build the application
+        run: |
+          ${{ inputs.build_command }}
+
+      - name: Prepare outputs
+        run: |
+          tar -czvf build-artifacts.tar.gz ${{ inputs.target_files }}
+
+      - name: Upload the artifacts
+        id: upload-artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: build-artifacts.tar.gz
+          retention-days: 1
+
+      - name: Put run id to pr
+        run: |
+          echo 'run id ${{ github.run_id }}'
